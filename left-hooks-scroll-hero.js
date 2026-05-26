@@ -30,7 +30,7 @@ class LeftHooksScrollHero extends HTMLElement {
     this.interval = null;
 
     // Change this to true if you want to see scroll progress on the hero.
-    this.debug = false;
+    this.debug = true;
 
     this.requestUpdate = this.requestUpdate.bind(this);
   }
