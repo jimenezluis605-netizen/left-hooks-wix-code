@@ -108,11 +108,11 @@ class LeftHooksScrollHero extends HTMLElement {
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap');
 
         :host {
-          display: block;
-          width: 100%;
-          height: 2200px;
-          min-height: 220vh;
-          background: #0b0d0e;
+ display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  background: #0b0d0e;
         }
 
         * {
