@@ -1,5 +1,5 @@
 /*
-LEFT HOOKS DESIGN — WIX CUSTOM ELEMENT SCROLL-SCRUB HERO
+LEFT HOOKS DESIGN — WIX CUSTOM ELEMENT SCROLL-SCRUB HERO V3
 
 Tag name for Wix:
 left-hooks-scroll-hero
@@ -7,14 +7,17 @@ left-hooks-scroll-hero
 Use this file as the source URL for your Wix Custom Element.
 Do NOT paste this into Wix Page Code.
 
+This version fixes common Wix preview issues where the video stays on the first frame by:
+- Updating on scroll
+- Updating on wheel/touch movement
+- Updating on a short interval while visible
+- Forcing the video to load metadata
+- Calculating progress from the custom element's position on the page
+
 Recommended Wix Custom Element height:
 Desktop: 2000px–2200px
 Tablet: 1700px–1900px
 Mobile: 1450px–1650px
-
-Important fix:
-This version does NOT force the element to 2200px from inside the code.
-Wix controls the height. The code fills whatever height Wix gives the element.
 */
 
 class LeftHooksScrollHero extends HTMLElement {
@@ -26,52 +29,68 @@ class LeftHooksScrollHero extends HTMLElement {
     this.duration = 0;
     this.raf = null;
     this.isReady = false;
+    this.interval = null;
 
-    this.handleScroll = this.handleScroll.bind(this);
-    this.handleResize = this.handleResize.bind(this);
+    this.requestUpdate = this.requestUpdate.bind(this);
   }
 
   connectedCallback() {
     this.render();
 
     this.video = this.shadowRoot.querySelector("#lhHeroVideo");
-
     if (!this.video) return;
 
-    this.video.pause();
-    this.video.currentTime = 0;
     this.video.muted = true;
     this.video.playsInline = true;
+    this.video.preload = "auto";
+    this.video.pause();
+
+    try {
+      this.video.load();
+    } catch (error) {
+      // Some browsers ignore manual load calls. Safe to ignore.
+    }
 
     this.video.addEventListener("loadedmetadata", () => {
       this.duration = this.video.duration || 0;
       this.isReady = true;
-      this.updateVideoFrame();
+      this.requestUpdate();
+    });
+
+    this.video.addEventListener("loadeddata", () => {
+      this.requestUpdate();
     });
 
     this.video.addEventListener("canplay", () => {
-      this.updateVideoFrame();
+      this.requestUpdate();
     });
 
-    window.addEventListener("scroll", this.handleScroll, { passive: true });
-    window.addEventListener("resize", this.handleResize);
+    window.addEventListener("scroll", this.requestUpdate, { passive: true });
+    window.addEventListener("wheel", this.requestUpdate, { passive: true });
+    window.addEventListener("touchmove", this.requestUpdate, { passive: true });
+    window.addEventListener("resize", this.requestUpdate);
+
+    // Wix Preview can sometimes miss scroll events inside custom elements.
+    // This keeps the frame synced while the element is on screen.
+    this.interval = window.setInterval(() => {
+      const rect = this.getBoundingClientRect();
+      const visible = rect.bottom > 0 && rect.top < window.innerHeight;
+      if (visible) this.requestUpdate();
+    }, 80);
   }
 
   disconnectedCallback() {
-    window.removeEventListener("scroll", this.handleScroll);
-    window.removeEventListener("resize", this.handleResize);
+    window.removeEventListener("scroll", this.requestUpdate);
+    window.removeEventListener("wheel", this.requestUpdate);
+    window.removeEventListener("touchmove", this.requestUpdate);
+    window.removeEventListener("resize", this.requestUpdate);
 
-    if (this.raf) {
-      cancelAnimationFrame(this.raf);
-    }
+    if (this.raf) cancelAnimationFrame(this.raf);
+    if (this.interval) clearInterval(this.interval);
   }
 
-  handleScroll() {
-    this.requestUpdate();
-  }
-
-  handleResize() {
-    this.requestUpdate();
+  clamp(value, min, max) {
+    return Math.min(Math.max(value, min), max);
   }
 
   requestUpdate() {
@@ -83,16 +102,19 @@ class LeftHooksScrollHero extends HTMLElement {
     });
   }
 
-  clamp(value, min, max) {
-    return Math.min(Math.max(value, min), max);
-  }
-
   updateVideoFrame() {
-    if (!this.video || !this.duration || !this.isReady) return;
+    if (!this.video) return;
+
+    if (!this.duration && this.video.duration) {
+      this.duration = this.video.duration;
+      this.isReady = true;
+    }
+
+    if (!this.duration || !this.isReady) return;
 
     const rect = this.getBoundingClientRect();
-    const elementHeight = this.offsetHeight;
-    const viewportHeight = window.innerHeight;
+    const elementHeight = this.offsetHeight || rect.height;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
     const scrollDistance = elementHeight - viewportHeight;
 
     if (scrollDistance <= 0) return;
@@ -100,8 +122,12 @@ class LeftHooksScrollHero extends HTMLElement {
     const progress = this.clamp(-rect.top / scrollDistance, 0, 1);
     const targetTime = progress * this.duration;
 
-    if (Math.abs(this.video.currentTime - targetTime) > 0.025) {
-      this.video.currentTime = targetTime;
+    try {
+      if (Math.abs(this.video.currentTime - targetTime) > 0.02) {
+        this.video.currentTime = targetTime;
+      }
+    } catch (error) {
+      // Some browsers may briefly block seeking while video is buffering.
     }
   }
 
