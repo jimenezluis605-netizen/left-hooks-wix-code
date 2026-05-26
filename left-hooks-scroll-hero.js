@@ -1,19 +1,20 @@
 /*
-LEFT HOOKS DESIGN — SCROLL-SCRUB HERO FOR WIX CUSTOM ELEMENT
+LEFT HOOKS DESIGN — WIX CUSTOM ELEMENT SCROLL-SCRUB HERO
 
 Tag name for Wix:
 left-hooks-scroll-hero
 
-What this does:
-- Loads your Wix-hosted MP4 video
-- Keeps the video sticky while the user scrolls
-- Scrubs the video based on page scroll position
-- Stops when the user stops scrolling
-- Reverses when the user scrolls back up
-
-IMPORTANT:
+Use this file as the source URL for your Wix Custom Element.
 Do NOT paste this into Wix Page Code.
-This must be used as the JavaScript source for a Wix Custom Element.
+
+Recommended Wix Custom Element height:
+Desktop: 2000px–2200px
+Tablet: 1700px–1900px
+Mobile: 1450px–1650px
+
+Important fix:
+This version does NOT force the element to 2200px from inside the code.
+Wix controls the height. The code fills whatever height Wix gives the element.
 */
 
 class LeftHooksScrollHero extends HTMLElement {
@@ -90,14 +91,16 @@ class LeftHooksScrollHero extends HTMLElement {
     if (!this.video || !this.duration || !this.isReady) return;
 
     const rect = this.getBoundingClientRect();
-    const totalScrollDistance = this.offsetHeight - window.innerHeight;
+    const elementHeight = this.offsetHeight;
+    const viewportHeight = window.innerHeight;
+    const scrollDistance = elementHeight - viewportHeight;
 
-    if (totalScrollDistance <= 0) return;
+    if (scrollDistance <= 0) return;
 
-    const progress = this.clamp(-rect.top / totalScrollDistance, 0, 1);
+    const progress = this.clamp(-rect.top / scrollDistance, 0, 1);
     const targetTime = progress * this.duration;
 
-    if (Math.abs(this.video.currentTime - targetTime) > 0.03) {
+    if (Math.abs(this.video.currentTime - targetTime) > 0.025) {
       this.video.currentTime = targetTime;
     }
   }
@@ -108,11 +111,11 @@ class LeftHooksScrollHero extends HTMLElement {
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap');
 
         :host {
- display: block;
-  width: 100%;
-  height: 100%;
-  min-height: 100%;
-  background: #0b0d0e;
+          display: block;
+          width: 100%;
+          height: 100%;
+          min-height: 100%;
+          background: #0b0d0e;
         }
 
         * {
@@ -125,7 +128,7 @@ class LeftHooksScrollHero extends HTMLElement {
           position: relative;
           width: 100%;
           height: 100%;
-          min-height: 220vh;
+          min-height: 100%;
           background: #0b0d0e;
           color: #f7f4ef;
           overflow: visible;
@@ -148,6 +151,7 @@ class LeftHooksScrollHero extends HTMLElement {
           object-fit: cover;
           object-position: center center;
           display: block;
+          background: #000;
         }
 
         .lh-overlay {
@@ -282,20 +286,11 @@ class LeftHooksScrollHero extends HTMLElement {
           letter-spacing: -0.02em;
         }
 
-        .lh-pill-1 { top: 112vh; }
-        .lh-pill-2 { top: 152vh; }
-        .lh-pill-3 { top: 192vh; }
+        .lh-pill-1 { top: 38%; }
+        .lh-pill-2 { top: 62%; }
+        .lh-pill-3 { top: 86%; }
 
         @media (max-width: 900px) {
-          :host {
-            height: 1900px;
-            min-height: 200vh;
-          }
-
-          .lh-scroll-hero {
-            min-height: 200vh;
-          }
-
           .lh-overlay {
             background:
               radial-gradient(circle at 60% 20%, rgba(200, 155, 94, 0.18), transparent 36%),
@@ -326,15 +321,6 @@ class LeftHooksScrollHero extends HTMLElement {
         }
 
         @media (max-width: 560px) {
-          :host {
-            height: 1550px;
-            min-height: 180vh;
-          }
-
-          .lh-scroll-hero {
-            min-height: 180vh;
-          }
-
           .lh-content {
             width: min(100% - 28px, 520px);
             padding-bottom: 64px;
